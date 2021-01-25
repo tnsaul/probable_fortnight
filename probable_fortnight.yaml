@@ -1,0 +1,79 @@
+esphome:
+  name: probable_fornight
+  platform: ESP8266
+  board: d1_mini
+  includes:
+  - grove_dust.h
+
+
+wifi:
+  ssid: !secret esp_wifi_ssid
+  password: !secret esp_wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret esp_backup_ssid
+    password: !secret esp_backup_password
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: !secret esp_api_password
+
+ota:
+  password: !secret esp_ota_password
+
+# ===================================
+# TNS addtions over ther base wizard
+
+# On WeMOS Mini D1 we have
+# SDA = D2 = GPIO4
+# SCL = D1 = GPIO5
+i2c:
+  sda: 4
+  scl: 5
+  scan: True
+  id: bus_a
+
+sensor:
+  - platform: bme280
+    temperature:
+      name: "Workroom Temperature"
+      oversampling: 16x
+      id: bmetemp
+    pressure:
+      name: "Workroom Pressure"
+    humidity:
+      name: "Workroom Humidity"
+      id: bmerh
+    address: 0x76
+    update_interval: 60s
+
+  - platform: custom
+    lambda: |-
+      auto dust_sensor = new GroveDustCustomSensor();
+      App.register_component(dust_sensor);
+      return {dust_sensor};
+
+    sensors:
+      name: "Grove Dust Sensor"
+display:
+  - platform: lcd_pcf8574
+    dimensions: 16x2
+    address: 0x27
+    id: tnsdisplay
+    # Apparent temperature from https://planetcalc.com/2089/
+    lambda: |-
+      float app_temp;
+      app_temp = id(bmetemp).state + 0.348 * (id(bmerh).state/100)*6.105*exp((17.27*id(bmetemp).state)/(237.7+id(bmetemp).state)) - 4.25;
+      it.printf(0,0,"Temp:%.1f~%.1fC", id(bmetemp).state, app_temp);
+      it.strftime(0,1,"Time:%H:%M", id(tns_time).now());
+
+# (Optional) For displaying time:
+time:
+- platform: sntp
+  id: tns_time
