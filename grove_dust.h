@@ -1,7 +1,7 @@
 /* =============================================== */
 /*
  Change History:
- v1 from  v8 of https://github.com/tnsaul/Grove-Dust-Sensor
+ v1 20210126 from  v8 of https://github.com/tnsaul/Grove-Dust-Sensor
 */
 /* =============================================== */
 
@@ -26,18 +26,8 @@ static const char *TAG = "custom.GroveDustCustomSensor";
 
 class GroveDustCustomSensor : public PollingComponent, public Sensor {
     public:
-        // Constructor
-        GroveDustCustomSensor() : PollingComponent(15000) {
-            // /* ==== Grove Class Variables ==== */
-            // int pin = D5;                              // Need to have a pin WITHOUT a pull-up or pull-down resistor on the input.
-            // unsigned long duration;
-            // unsigned long starttime;
-            // unsigned long sampletime_ms = 30*1000;     //sample 30s??
-            // unsigned long lowpulseoccupancy = 0;
-            // float ratio = 0;
-            // float concentration = 0;
-
-        }
+        // Constructor - set the polling period to 120 seconds
+        GroveDustCustomSensor() : PollingComponent(120000) {}
 
         float get_setup_priority() const override { return esphome::setup_priority::IO; }
 
@@ -49,34 +39,49 @@ class GroveDustCustomSensor : public PollingComponent, public Sensor {
             // Grove just uses a standard IO pin
             pinMode(pin, INPUT);
         }
-        void update() override {
-            // This will be called every polling period.
+
+        void loop() override {
+            // This will be called by App.loop() as part of the Constructor class override
             /*
-            * The Grove sensor runs in a tight loop, so it will need to consider impacts if there is any other looping code.
-            *
-            *
             * Reads a pulse (either HIGH or LOW) on a pin. For example, if value is HIGH, pulseIn() 
             * waits for the pin to go HIGH, starts timing, then waits for the pin to go LOW and 
             * stops timing. Returns the length of the pulse in microseconds or 0 if no complete 
             * pulse was received within the timeout.
             */
+            if (_sampling) {
+                //ESP_LOGD(TAG, "Poll.");
+                // Test for sampltime_ms duration reading the pulse measurements and accumulating them
+                if ((millis()-starttime) < sampletime_ms){
+                    // Timeout is 500 mSec second so as to not bog down the loop too much as pulseIn() is blocking.  
+                    // This is effectively blocking so be careful.
+                    // Duration is in microseconds
+                    duration = pulseIn(pin, LOW, 250000);                             
+                    
+                    lowpulseoccupancy = lowpulseoccupancy+duration;                   
+                } else {
+                    // This should mean we have hit to end of the sample period.
+                    _sampling = false;
+                    // ESP_LOGD(TAG, "Stopped polling for pulses.");
+
+                    /*
+                    * This could do with some tweaking as the sample period could extend if pulseIn() forced the 
+                    * sample time to extend beyond 30 secs.  Perhaps setting a timeout is appropriate?
+                    */
+                    ratio = lowpulseoccupancy/(sampletime_ms*10.0);                     // Integer percentage 0 < 100
+                    concentration = 1.1*pow(ratio,3)-3.8*pow(ratio,2)+520*ratio+0.62;   // using spec sheet curve
+                    ESP_LOGD(TAG, "Lowpulseoccupancy = : %ld microseconds", lowpulseoccupancy);
+                    ESP_LOGD(TAG, "Concentration = : %f pcs/0.01cf", concentration);                
+                }
+            }
+        }
+
+        void update() override {
+            // This will be called every polling period.
+            // Reset the key variables
+            _sampling = true;
             lowpulseoccupancy = 0;  
             starttime = millis();                                               //get the current time; 
-            // Loop for sampltime_ms duration reading the pulse measurements and accumulating them
-            while ((millis()-starttime) < sampletime_ms){
-                duration = pulseIn(pin, LOW);                                     // Timeout is 1 second as default when not specified.
-                lowpulseoccupancy = lowpulseoccupancy+duration;                   // Duration is in microseconds
-            }
-
-
-            /*
-            * This could do with some tweaking as the sample period could extend if pulseIn() forced the 
-            * sample time to extend beyond 30 secs.  Perhaps setting a timeout is appropriate?
-            */
-            ratio = lowpulseoccupancy/(sampletime_ms*10.0);                     // Integer percentage 0 < 100
-            concentration = 1.1*pow(ratio,3)-3.8*pow(ratio,2)+520*ratio+0.62;   // using spec sheet curve
-            ESP_LOGD(TAG, "Lowpulseoccupancy = : %d microseconds", lowpulseoccupancy);
-            ESP_LOGD(TAG, "Concentration = : %d pcs/0.01cf", concentration);
+            ESP_LOGD(TAG, "Started polling for pulses.");
         }
 
     private:
@@ -88,4 +93,5 @@ class GroveDustCustomSensor : public PollingComponent, public Sensor {
             unsigned long lowpulseoccupancy = 0;
             float ratio = 0;
             float concentration = 0;
+            bool _sampling = false;
 };

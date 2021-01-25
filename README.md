@@ -15,6 +15,9 @@ What is in this prototype:
 The code attempts to calculate the "apparent" temperature from https://planetcalc.com/2089/
 However it is currently not giving a reasonable value on overcast and raining days - likely dufus (me) error in the calculation or understanding of how it should be done.
 
+### Dust Sensor 
+This is written as a non-blocking custom "Component" model in ESP Home.  The original Grove software was blocking - sampling the P1 pulse over a 30 second interval.  This non-blocking version reads the P1 input level in the loop() override which is supposed to be run up to 60 times per second.  Update() is from the PollingComponent class and is called every 2 mins (settable in the comstructor for the class).
+
 ## Compiling etc.
 You will need to install ESP Home and Home Assistant if you want to use this.
 
@@ -24,8 +27,8 @@ I used VSCode as the IDE and linked this back to my GITHUB environment.
 
 ESP Home needs to be compiled in the CLI in a terminal (well for me at least) using:
 
-`esphome curly_eureka_1.yaml compile`
+`esphome probable_fornight.yaml compile`
 
 To deploy it to a connects D1 Mini use:
 
-`esphome curly_eureka_1.yaml run`
+`esphome probable_fornight.yaml run`
