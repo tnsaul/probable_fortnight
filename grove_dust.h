@@ -70,7 +70,8 @@ class GroveDustCustomSensor : public PollingComponent, public Sensor {
                     ratio = lowpulseoccupancy/(sampletime_ms*10.0);                     // Integer percentage 0 < 100
                     concentration = 1.1*pow(ratio,3)-3.8*pow(ratio,2)+520*ratio+0.62;   // using spec sheet curve
                     ESP_LOGD(TAG, "Lowpulseoccupancy = : %ld microseconds", lowpulseoccupancy);
-                    ESP_LOGD(TAG, "Concentration = : %f pcs/0.01cf", concentration);                
+                    ESP_LOGD(TAG, "Concentration = : %f pcs/0.01cf", concentration);   
+                    publish_state(concentration);  
                 }
             }
         }
