@@ -23,13 +23,27 @@
 #include "esphome.h"
 
 static const char *TAG = "custom.GroveDustCustomSensor";
+// We declare the sampletime_ms as static so it can be used in the constructor
+// else we end up in a tight loop
+static unsigned long sampletime_ms = 120000;       //sample 120s?? 
+
+
+// Interrupt handler code
+volatile byte interruptCounter = 0;
+ICACHE_RAM_ATTR void dust_trigger_isr(void){
+    interruptCounter++;
+}
+
 
 class GroveDustCustomSensor : public PollingComponent, public Sensor {
     public:
-        // Constructor - set the polling period to 120 seconds
-        GroveDustCustomSensor() : PollingComponent(120000) {}
 
-        float get_setup_priority() const override { return esphome::setup_priority::IO; }
+        // Constructor - update_interval	The update interval in ms.
+        GroveDustCustomSensor() : PollingComponent(sampletime_ms) {
+            ESP_LOGD(TAG, "Instantiated.");
+        }
+
+        float get_setup_priority() const override { return esphome::setup_priority::LATE; }
 
 
         void setup() override {
@@ -38,6 +52,9 @@ class GroveDustCustomSensor : public PollingComponent, public Sensor {
 
             // Grove just uses a standard IO pin
             pinMode(pin, INPUT);
+
+            // Try some interrupts
+            attachInterrupt(pin, dust_trigger_isr, FALLING);
         }
 
         void loop() override {
@@ -48,51 +65,42 @@ class GroveDustCustomSensor : public PollingComponent, public Sensor {
             * stops timing. Returns the length of the pulse in microseconds or 0 if no complete 
             * pulse was received within the timeout.
             */
-            if (_sampling) {
-                //ESP_LOGD(TAG, "Poll.");
-                // Test for sampltime_ms duration reading the pulse measurements and accumulating them
-                if ((millis()-starttime) < sampletime_ms){
-                    // Timeout is 500 mSec second so as to not bog down the loop too much as pulseIn() is blocking.  
-                    // This is effectively blocking so be careful.
-                    // Duration is in microseconds
-                    duration = pulseIn(pin, LOW, 250000);                             
-                    
-                    lowpulseoccupancy = lowpulseoccupancy+duration;                   
-                } else {
-                    // This should mean we have hit to end of the sample period.
-                    _sampling = false;
-                    // ESP_LOGD(TAG, "Stopped polling for pulses.");
+            // Parameters::
+            // pin: the number of the Arduino pin on which you want to read the pulse. Allowed data types: int.
+            // value: type of pulse to read: either HIGH or LOW. Allowed data types: int.
+            // timeout (optional): the number of microseconds to wait for the pulse to start; default is one second. Allowed data types: unsigned long.
 
-                    /*
-                    * This could do with some tweaking as the sample period could extend if pulseIn() forced the 
-                    * sample time to extend beyond 30 secs.  Perhaps setting a timeout is appropriate?
-                    */
-                    ratio = lowpulseoccupancy/(sampletime_ms*10.0);                     // Integer percentage 0 < 100
-                    concentration = 1.1*pow(ratio,3)-3.8*pow(ratio,2)+520*ratio+0.62;   // using spec sheet curve
-                    ESP_LOGD(TAG, "Lowpulseoccupancy = : %ld microseconds", lowpulseoccupancy);
-                    ESP_LOGD(TAG, "Concentration = : %f pcs/0.01cf", concentration);   
-                    publish_state(concentration);  
-                }
-            }
-        }
+            duration = pulseIn(pin, LOW, 500000);                             
+            
+            lowpulseoccupancy = lowpulseoccupancy+duration; 
+         }
 
         void update() override {
+            // We aren't using interrupts, but it is handy to count the number of pulses we see.
+            ESP_LOGD(TAG, "Interrupts %d", interruptCounter);
+            interruptCounter = 0;
+
             // This will be called every polling period.
-            // Reset the key variables
-            _sampling = true;
+
+            // We should be dividing by something to do with elapsed time and not sampletime_ms if we are looking
+            // to be accurate.
+            ratio = lowpulseoccupancy/(sampletime_ms*10.0);                     // Integer percentage 0 < 100
+            concentration = 1.1*pow(ratio,3)-3.8*pow(ratio,2)+520*ratio+0.62;   // using spec sheet curve
+            ESP_LOGD(TAG, "Lowpulseoccupancy = : %ld milliseconds", lowpulseoccupancy);
+            ESP_LOGD(TAG, "Concentration = : %f pcs/0.01cf", concentration);   
+            publish_state(concentration);  
+
+            // Reset the key variables to key off a new sample!
             lowpulseoccupancy = 0;  
-            starttime = millis();                                               //get the current time; 
-            ESP_LOGD(TAG, "Started polling for pulses.");
         }
 
     private:
             /* ==== Grove Class Variables ==== */
-            int pin = D5;                              // Need to have a pin WITHOUT a pull-up or pull-down resistor on the input.
+            int pin = D5;                               // Need to have a pin WITHOUT a pull-up or pull-down resistor on the input.
             unsigned long duration;
-            unsigned long starttime;
-            unsigned long sampletime_ms = 30*1000;     //sample 30s??
             unsigned long lowpulseoccupancy = 0;
             float ratio = 0;
             float concentration = 0;
-            bool _sampling = false;
+            volatile boolean interruptFlag = 0;
+            int numberOfInterrupts = 0;
 };

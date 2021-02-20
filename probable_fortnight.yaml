@@ -1,5 +1,5 @@
 esphome:
-  name: probable_fornight
+  name: probable_fortnight
   platform: ESP8266
   board: d1_mini
   includes:
@@ -7,6 +7,14 @@ esphome:
 
 
 wifi:
+  manual_ip:
+    # Set this to the IP of the ESP
+    static_ip: 10.10.10.9
+    # Set this to the IP address of the router. Often ends with .1
+    gateway: 10.10.10.1
+    # The subnet of the network. 255.255.255.0 works for most home networks.
+    subnet: 255.255.255.0
+
   ssid: !secret esp_wifi_ssid
   password: !secret esp_wifi_password
 
@@ -61,17 +69,17 @@ sensor:
 
     sensors:
       name: "Grove Dust Sensor"
-display:
-  - platform: lcd_pcf8574
-    dimensions: 16x2
-    address: 0x27
-    id: tnsdisplay
-    # Apparent temperature from https://planetcalc.com/2089/
-    lambda: |-
-      float app_temp;
-      app_temp = id(bmetemp).state + 0.348 * (id(bmerh).state/100)*6.105*exp((17.27*id(bmetemp).state)/(237.7+id(bmetemp).state)) - 4.25;
-      it.printf(0,0,"Temp:%.1f~%.1fC", id(bmetemp).state, app_temp);
-      it.strftime(0,1,"Time:%H:%M", id(tns_time).now());
+# display:
+#   - platform: lcd_pcf8574
+#     dimensions: 16x2
+#     address: 0x27
+#     id: tnsdisplay
+#     # Apparent temperature from https://planetcalc.com/2089/
+#     lambda: |-
+#       float app_temp;
+#       app_temp = id(bmetemp).state + 0.348 * (id(bmerh).state/100)*6.105*exp((17.27*id(bmetemp).state)/(237.7+id(bmetemp).state)) - 4.25;
+#       it.printf(0,0,"Temp:%.1f~%.1fC", id(bmetemp).state, app_temp);
+#       it.strftime(0,1,"Time:%H:%M", id(tns_time).now());
 
 # (Optional) For displaying time:
 time:
