@@ -18,6 +18,8 @@ However it is currently not giving a reasonable value on overcast and raining da
 ### Dust Sensor 
 This is written as a non-blocking custom "Component" model in ESP Home.  The original Grove software was blocking - sampling the P1 pulse over a 30 second interval.  This non-blocking version reads the P1 input level in the loop() override which is supposed to be run up to 60 times per second.  Update() is from the PollingComponent class and is called every 2 mins (settable in the comstructor for the class).
 
+Added some arduino interrupts to count the number of pulses as a cross check.  The count is visible in the terminal debugger output once the code is loaded on the ESP device.
+
 ## Compiling etc.
 You will need to install ESP Home and Home Assistant if you want to use this.
 
