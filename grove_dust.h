@@ -69,7 +69,7 @@ class GroveDustCustomSensor : public PollingComponent, public Sensor {
             // pin: the number of the Arduino pin on which you want to read the pulse. Allowed data types: int.
             // value: type of pulse to read: either HIGH or LOW. Allowed data types: int.
             // timeout (optional): the number of microseconds to wait for the pulse to start; default is one second. Allowed data types: unsigned long.
-
+            // result is time in microseconds
             duration = pulseIn(pin, LOW, 500000);                             
             
             lowpulseoccupancy = lowpulseoccupancy+duration; 
@@ -82,12 +82,13 @@ class GroveDustCustomSensor : public PollingComponent, public Sensor {
 
             // This will be called every polling period.
 
-            // We should be dividing by something to do with elapsed time and not sampletime_ms if we are looking
-            // to be accurate.
+            // We should be dividing by something to do with actual elapsed time and not sampletime_ms if we are looking
+            // to be accurate given update() is not precise
             ratio = lowpulseoccupancy/(sampletime_ms*10.0);                     // Integer percentage 0 < 100
             concentration = 1.1*pow(ratio,3)-3.8*pow(ratio,2)+520*ratio+0.62;   // using spec sheet curve
-            ESP_LOGD(TAG, "Lowpulseoccupancy = : %ld milliseconds", lowpulseoccupancy);
-            ESP_LOGD(TAG, "Concentration = : %f pcs/0.01cf", concentration);   
+            ESP_LOGD(TAG, "Lowpulseoccupancy = : %ld microseconds", lowpulseoccupancy);
+            ESP_LOGD(TAG, "Ratio = : %.2f %%", ratio);
+            ESP_LOGD(TAG, "Concentration = : %.2f pcs/0.01cf", concentration);   
             publish_state(concentration);  
 
             // Reset the key variables to key off a new sample!
