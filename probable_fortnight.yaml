@@ -69,6 +69,8 @@ sensor:
 
     sensors:
       name: "Grove Dust Sensor"
+      unit_of_measurement: pcs/0.01cf
+      accuracy_decimals: 0
 # display:
 #   - platform: lcd_pcf8574
 #     dimensions: 16x2
