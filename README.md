@@ -8,17 +8,18 @@ This is using ESP Home (https://esphome.io/index.html) as the foundation coding 
 
 What is in this prototype:
 1. BME280 using https://esphome.io/components/sensor/bmp280.html
-2. 16x2 Line I2C LCD Display using https://esphome.io/components/display/lcd_display.html
-3. A Grove Dust Sensor.  The Grove Dust Sensor is a nifty little device to see how dirty my workshop air is (I do woodworking hence it is pretty bad). Reference:  http://wiki.seeedstudio.com/Grove-Dust_Sensor/
+2. A Grove Dust Sensor.  The Grove Dust Sensor is a nifty little device to see how dirty my workshop air is (I do woodworking hence it is pretty bad). Reference:  http://wiki.seeedstudio.com/Grove-Dust_Sensor/
 
 ### Temperature
 The code attempts to calculate the "apparent" temperature from https://planetcalc.com/2089/
 However it is currently not giving a reasonable value on overcast and raining days - likely dufus (me) error in the calculation or understanding of how it should be done.
 
 ### Dust Sensor 
-This is written as a non-blocking custom "Component" model in ESP Home.  The original Grove software was blocking - sampling the P1 pulse over a 30 second interval.  This non-blocking version reads the P1 input level in the loop() override which is supposed to be run up to 60 times per second.  Update() is from the PollingComponent class and is called every 2 mins (settable in the comstructor for the class).
+This is written as a non-blocking custom "Component" model in ESP Home.  The original Grove software was blocking - sampling the P1 pulse over a 30 second interval.  
 
-Added some arduino interrupts to count the number of pulses as a cross check.  The count is visible in the terminal debugger output once the code is loaded on the ESP device.
+Update() is from the PollingComponent class and is called every 2 mins (settable in the comstructor for the class).
+
+Using some arduino interrupts to count the number of pulses during the polling interval as this seems more accurate than using pulseIn() in the loop() cycle; the latter seemed to be missing pulse starts and hence was less accurate IMO.  
 
 ## Compiling etc.
 You will need to install ESP Home and Home Assistant if you want to use this.
